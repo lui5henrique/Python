@@ -5,7 +5,7 @@ Este repositório reúne meus projetos desenvolvidos com a linguagem **Python**,
 ## 🎯 Objetivos
 
 - Praticar lógica de programação com Python
-- Aplicar bibliotecas como `pandas`, `matplotlib`, `seaborn`, entre outras
+- Aplicar bibliotecas como `pandas`, `matplotlib`, `seaborn`, `pyautogui` entre outras
 - Desenvolver soluções para análise, automação e visualização de dados
 - Aprimorar boas práticas de código e organização de projetos
 
