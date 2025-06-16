@@ -30,7 +30,7 @@ Cada projeto contém:
 
 - Python 3.x
 - Jupyter Notebook / VS Code
-- Bibliotecas: `pandas`, `matplotlib`, `openpyxl`, `seaborn`, `numpy`
+- Bibliotecas: `pandas`, `matplotlib`, `openpyxl`, `seaborn`, `numpy`, `pyautogui`.
 
 ## 👨‍💻 Sobre mim
 
