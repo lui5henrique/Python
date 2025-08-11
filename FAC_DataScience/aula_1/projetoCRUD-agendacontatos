@@ -1,0 +1,157 @@
+'''
+FACULDADE SENAC PERNAMBUCO
+CURSO: Análise e Desenvolvimento de Sistemas
+TURMA: TADS 043
+ALUNOS: Luis Henrique Da Silva Araújo / Rayza Dias Alves/ Diogo Sant'Ana Vasconcelos / Ayrton Oliveira / Pedro Lucas.
+PROJETO: CRUD AGENDA DE CONTATOS (Python ou R)
+'''
+
+class GerenciadorContatos:
+    def __init__(self):
+        """Inicializa o gerenciador com uma lista vazia de contatos"""
+        self.contatos = []
+        self.proximo_id = 1
+    
+    def adicionar_contato(self):
+        """Adiciona um novo contato à lista"""
+        print("\n--- Adicionar Novo Contato ---")
+        
+        nome = input("Nome: ").strip()
+        telefone = input("Telefone: ").strip()
+        email = input("E-mail: ").strip()
+        
+        if not nome:
+            print("Erro: O nome é obrigatório!")
+            return
+        
+        novo_contato = {
+            'id': self.proximo_id,
+            'nome': nome,
+            'telefone': telefone,
+            'email': email
+        }
+        
+        self.contatos.append(novo_contato)
+        self.proximo_id += 1
+        print(f"Contato '{nome}' adicionado com sucesso! (ID: {novo_contato['id']})")
+    
+    def listar_contatos(self):
+        """Lista todos os contatos cadastrados"""
+        print("\n--- Lista de Contatos ---")
+        
+        if not self.contatos:
+            print("Nenhum contato cadastrado.")
+            return
+        
+        for contato in self.contatos:
+            print(f"ID: {contato['id']}")
+            print(f"Nome: {contato['nome']}")
+            print(f"Telefone: {contato['telefone']}")
+            print(f"E-mail: {contato['email']}")
+            print("-" * 30)
+    
+    def buscar_contato(self, identificador):
+        """Busca um contato por ID ou nome"""
+        try:
+            # Tenta converter para inteiro (busca por ID)
+            id_busca = int(identificador)
+            for contato in self.contatos:
+                if contato['id'] == id_busca:
+                    return contato
+        except ValueError:
+            # Se não for número, busca por nome
+            nome_busca = identificador.lower()
+            for contato in self.contatos:
+                if contato['nome'].lower() == nome_busca:
+                    return contato
+        
+        return None
+    
+    def editar_contato(self):
+        """Edita um contato existente"""
+        print("\n--- Editar Contato ---")
+        
+        if not self.contatos:
+            print("Nenhum contato cadastrado para editar.")
+            return
+        
+        identificador = input("Digite o ID ou nome do contato que deseja editar: ").strip()
+        contato = self.buscar_contato(identificador)
+        
+        if not contato:
+            print("Contato não encontrado!")
+            return
+        
+        print(f"\nEditando contato: {contato['nome']} (ID: {contato['id']})")
+        print("Deixe em branco para manter o valor atual.")
+        
+        novo_nome = input(f"Nome [{contato['nome']}]: ").strip()
+        novo_telefone = input(f"Telefone [{contato['telefone']}]: ").strip()
+        novo_email = input(f"E-mail [{contato['email']}]: ").strip()
+        
+        if novo_nome:
+            contato['nome'] = novo_nome
+        if novo_telefone:
+            contato['telefone'] = novo_telefone
+        if novo_email:
+            contato['email'] = novo_email
+        
+        print("Contato atualizado com sucesso!")
+    
+    def remover_contato(self):
+        """Remove um contato da lista"""
+        print("\n--- Remover Contato ---")
+        
+        if not self.contatos:
+            print("Nenhum contato cadastrado para remover.")
+            return
+        
+        identificador = input("Digite o ID ou nome do contato que deseja remover: ").strip()
+        contato = self.buscar_contato(identificador)
+        
+        if not contato:
+            print("Contato não encontrado!")
+            return
+        
+        confirmacao = input(f"Tem certeza que deseja remover '{contato['nome']}'? (s/n): ").strip().lower()
+        if confirmacao == 's':
+            self.contatos.remove(contato)
+            print("Contato removido com sucesso!")
+        else:
+            print("Operação cancelada.")
+    
+    def exibir_menu(self):
+        """Exibe o menu principal"""
+        print("\n=== Gerenciador de Contatos ===")
+        print("1. Adicionar novo contato")
+        print("2. Listar todos os contatos")
+        print("3. Editar contato")
+        print("4. Remover contato")
+        print("5. Sair")
+    
+    def executar(self):
+        """Executa o gerenciador em loop até o usuário escolher sair"""
+        while True:
+            self.exibir_menu()
+            opcao = input("\nDigite a opção desejada: ").strip()
+            
+            if opcao == '1':
+                self.adicionar_contato()
+            elif opcao == '2':
+                self.listar_contatos()
+            elif opcao == '3':
+                self.editar_contato()
+            elif opcao == '4':
+                self.remover_contato()
+            elif opcao == '5':
+                print("Saindo do sistema...")
+                break
+            else:
+                print("Opção inválida! Por favor, digite um número de 1 a 5.")
+            
+            input("\nPressione Enter para continuar...")
+
+# Inicia o gerenciador
+if __name__ == "__main__":
+    gerenciador = GerenciadorContatos()
+    gerenciador.executar()
