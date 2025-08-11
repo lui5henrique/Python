@@ -1,0 +1,154 @@
+import json
+import os
+
+# Nome do arquivo para salvar os contatos
+ARQUIVO_CONTATOS = "contatos.json"
+
+# Lista para armazenar os contatos (cada contato será um dicionário)
+contatos = []
+
+def carregar_contatos():
+    """Carrega os contatos do arquivo, se existir"""
+    global contatos
+    if os.path.exists(ARQUIVO_CONTATOS):
+        try:
+            with open(ARQUIVO_CONTATOS, 'r') as arquivo:
+                contatos = json.load(arquivo)
+            print("Contatos carregados com sucesso!")
+        except:
+            print("Erro ao carregar contatos. Iniciando lista vazia.")
+            contatos = []
+    else:
+        contatos = []
+
+def salvar_contatos():
+    """Salva os contatos no arquivo"""
+    try:
+        with open(ARQUIVO_CONTATOS, 'w') as arquivo:
+            json.dump(contatos, arquivo)
+    except:
+        print("Erro ao salvar contatos!")
+
+def mostrar_menu():
+    """Mostra o menu de opções"""
+    print("\n=== MENU ===")
+    print("1. Adicionar contato")
+    print("2. Ver contatos")
+    print("3. Editar contato")
+    print("4. Apagar contato")
+    print("5. Sair")
+
+def adicionar_contato():
+    """Adiciona um novo contato à lista"""
+    print("\n--- ADICIONAR CONTATO ---")
+    
+    nome = input("Nome: ")
+    telefone = input("Telefone: ")
+    email = input("Email: ")
+    
+    # Cria um dicionário com os dados do contato
+    novo_contato = {
+        "nome": nome,
+        "telefone": telefone,
+        "email": email
+    }
+    
+    # Adiciona o contato à lista
+    contatos.append(novo_contato)
+    salvar_contatos()
+    print(f"Contato de {nome} adicionado com sucesso!")
+
+def ver_contatos():
+    """Mostra todos os contatos cadastrados"""
+    print("\n--- LISTA DE CONTATOS ---")
+    
+    if len(contatos) == 0:
+        print("Nenhum contato cadastrado ainda.")
+    else:
+        for indice, contato in enumerate(contatos, start=1):
+            print(f"\nContato #{indice}")
+            print(f"Nome: {contato['nome']}")
+            print(f"Telefone: {contato['telefone']}")
+            print(f"Email: {contato['email']}")
+
+def editar_contato():
+    """Edita um contato existente"""
+    print("\n--- EDITAR CONTATO ---")
+    
+    if len(contatos) == 0:
+        print("Não há contatos para editar.")
+        return
+    
+    ver_contatos()
+    
+    try:
+        numero = int(input("\nDigite o número do contato que quer editar: ")) - 1
+        
+        if 0 <= numero < len(contatos):
+            contato = contatos[numero]
+            
+            print("\nDeixe em branco para não alterar o valor atual.")
+            
+            novo_nome = input(f"Nome atual: {contato['nome']}\nNovo nome: ")
+            novo_telefone = input(f"Telefone atual: {contato['telefone']}\nNovo telefone: ")
+            novo_email = input(f"Email atual: {contato['email']}\nNovo email: ")
+            
+            if novo_nome:
+                contato['nome'] = novo_nome
+            if novo_telefone:
+                contato['telefone'] = novo_telefone
+            if novo_email:
+                contato['email'] = novo_email
+            
+            salvar_contatos()
+            print("Contato atualizado com sucesso!")
+        else:
+            print("Número inválido!")
+    except ValueError:
+        print("Por favor, digite um número válido.")
+
+def apagar_contato():
+    """Remove um contato da lista"""
+    print("\n--- APAGAR CONTATO ---")
+    
+    if len(contatos) == 0:
+        print("Não há contatos para apagar.")
+        return
+    
+    ver_contatos()
+    
+    try:
+        numero = int(input("\nDigite o número do contato que quer apagar: ")) - 1
+        
+        if 0 <= numero < len(contatos):
+            contato_removido = contatos.pop(numero)
+            salvar_contatos()
+            print(f"Contato de {contato_removido['nome']} foi removido.")
+        else:
+            print("Número inválido!")
+    except ValueError:
+        print("Por favor, digite um número válido.")
+
+# Programa principal
+if __name__ == "__main__":
+    carregar_contatos()
+    
+    while True:
+        mostrar_menu()
+        opcao = input("\nEscolha uma opção: ")
+        
+        if opcao == "1":
+            adicionar_contato()
+        elif opcao == "2":
+            ver_contatos()
+        elif opcao == "3":
+            editar_contato()
+        elif opcao == "4":
+            apagar_contato()
+        elif opcao == "5":
+            print("Saindo do programa...")
+            break
+        else:
+            print("Opção inválida. Por favor, escolha de 1 a 5.")
+        
+        input("\nPressione Enter para continuar...")
