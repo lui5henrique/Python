@@ -1,0 +1,107 @@
+# Importação das Bibliotecas
+import pandas as pd # para manipulação de dados
+import os # para manipulação de arquivos e diretórios
+import shutil # para mover arquivos entre diretórios
+import datetime # para manipulação de datas
+import calendar # para manipulação de calendários
+import numpy as np # para manipulação de arrays e operações matemáticas
+
+# mover um arquivo de uma pasta para outra e renomeá-lo
+pasta_origem = r'C:\Users\luis.henrique\Downloads' # caminho do diretório onde está o arquivo Excel
+arquivo_excel = 'Contratos  Contratos.gov.br.xlsx' # nome do arquivo Excel que se deseja ler
+pasta_destino = r'C:\Users\luis.henrique\AGU\FileServer-SADPE - Documentos\POWER_BI\Contratos'  # caminho completo do arquivo Excel
+novo_nome_arquivo = 'base_contratos_2026_0.1_tratada.xlsx' # novo nome do arquivo Excel
+caminho_origem = os.path.join(pasta_origem, arquivo_excel) # caminho completo do arquivo Excel de origem
+caminho_destino = os.path.join(pasta_destino, novo_nome_arquivo) # caminho completo do arquivo Excel de destino com o novo nome
+
+# verificar se o arquivo Excel existe no diretório de origem
+if os.path.exists(caminho_origem):
+    shutil.move(caminho_origem, caminho_destino) # mover e renomear o arquivo Excel
+
+# remover da pasta_origem o arquivo Excel
+if os.path.exists(caminho_origem):
+    os.remove(caminho_origem)
+
+# Carregamento da base de Dados - Contratos
+base_contratos = pd.read_excel('base_contratos_2026_0.1_tratada.xlsx', header=1)
+
+# excluindo todos os espaços desnecessários do início e do fim dos valores das colunas
+base_contratos = base_contratos.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+
+display(base_contratos.head(5))
+base_contratos.info()
+
+# Exclusão de colunas desnecessárias
+colunas_excluir = ['Atualizado em', 'Data Encerramento', 'Núm. Parcelas', 'Valor Global']
+base_contratos = base_contratos.drop(columns=colunas_excluir)
+
+# removendo colunas vazias
+base_contratos.dropna(axis=1, how='all', inplace=True)
+
+# removendo linhas inválidas
+base_contratos = base_contratos[base_contratos['Unidades Requisitantes'].notna()]
+base_contratos = base_contratos[base_contratos['Unidades Requisitantes'] != "'-8"]
+base_contratos = base_contratos[base_contratos['Número do instrumento'].notna()]
+base_contratos = base_contratos[base_contratos['Número do instrumento'] != "'-8"]
+
+display(base_contratos.head(5))
+base_contratos.info()
+
+# mudar nome das colunas para facilitar a manipulação
+base_contratos = base_contratos.rename(columns=
+                                       {'Número do instrumento': 'contratos_num_instrumento',
+                                        'Unidades Requisitantes': 'contratos_unid_requisitantes',
+                                        'Fornecedor': 'contratos_doc_fornecedor',
+                                        'Objeto': 'contratos_objeto',
+                                        'Vig. Início': 'contratos_vigencia_inicio',
+                                        'Vig. Fim': 'contratos_vigencia_fim',
+                                        'Valor Parcela': 'contratos_valor_parcela',})
+
+
+base_contratos['contratos_unid_requisitantes'] = base_contratos['contratos_unid_requisitantes'].replace('null', 'Em Branco')
+
+# Converter colunas de data para date
+base_contratos['contratos_vigencia_inicio'] = pd.to_datetime(base_contratos['contratos_vigencia_inicio'], dayfirst=True, errors='coerce')
+base_contratos['contratos_vigencia_fim'] = base_contratos['contratos_vigencia_fim'].replace('Indeterminado', '31/12/2026')
+base_contratos['contratos_vigencia_fim'] = pd.to_datetime(base_contratos['contratos_vigencia_fim'], dayfirst=True, errors='coerce')
+
+# retirar os pontos e virgulas da coluna cnpj e cpf deixar apenas os números
+base_contratos['contratos_doc_fornecedor'] = base_contratos['contratos_doc_fornecedor'].str.replace('.', '', regex=False).str.replace('-', '', regex=False).str.replace('/', '', regex=False)
+
+
+display(base_contratos.head(5))
+base_contratos.info()
+
+# criar uma coluna com o nome "vigencia_contrato" de acordo com o calculo das colunas vigencia_inicio e vigencia_fim, tipo de dados inteiro.
+#base_contratos['vigencia_contrato'] = ((base_contratos['vigencia_fim'] - base_contratos['vigencia_inicio']) / np.timedelta64(1, 'M')).astype(int)
+
+base_contratos['contratos_vigencia_contrato'] = (
+    (base_contratos['contratos_vigencia_fim'].dt.year - base_contratos['contratos_vigencia_inicio'].dt.year) * 12 +
+    (base_contratos['contratos_vigencia_fim'].dt.month - base_contratos['contratos_vigencia_inicio'].dt.month)
+)
+
+# converter a coluna valor_parcela para float, retirando os pontos e virgulas e convertendo para o formato americano (ponto como separador decimal)
+base_contratos['contratos_valor_parcela'] = pd.to_numeric(
+    base_contratos['contratos_valor_parcela']
+    .astype(str)
+    .str.replace('R$', '', regex=False)
+    .str.replace('.', '', regex=False)
+    .str.replace(',', '.', regex=False)
+    .str.strip(),
+    errors='coerce'
+)
+
+# multipicar a coluna valor_parcela pela coluna vigencia_contrato e criar uma nova coluna chamada valor_total_contrato
+base_contratos['contratos_valor_global'] = base_contratos['contratos_valor_parcela'] * base_contratos['contratos_vigencia_contrato']
+
+display(base_contratos.head(5))
+base_contratos.info()
+
+# utilizar apenas os registros da coluna "numero_instrumento" que terminem com 2025 e 2026
+#base_contratos = base_contratos[base_contratos['contratos_num_instrumento'].str.endswith(('2023','2024','2025', '2026'))]
+
+display(base_contratos.head(5))
+base_contratos.info()
+
+# salvar substituindo a base de dados tratada no arquivo existente com o mesmo nome
+base_contratos.to_excel('base_contratos_2026_0.1_tratada.xlsx', sheet_name='Contratos', index=False)
