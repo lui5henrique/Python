@@ -1,0 +1,63 @@
+import requests
+import pandas as pd
+
+# ==========================================
+# TOKEN DA API
+# ==========================================
+
+token = 'SEU TOKEN AQUI'
+
+# ==========================================
+# URL DA API
+# ==========================================
+
+url = 'LINK DO ENDPOINT'
+
+# ==========================================
+# CABEÇALHO DA REQUISIÇÃO
+# ==========================================
+
+headers = {
+    'chave-api-dados': token
+}
+
+# ==========================================
+# PARÂMETROS DA CONSULTA
+# ==========================================
+
+params = {
+    'pagina': 1,
+    'tamanhoPagina': 100
+}
+
+# ==========================================
+# REQUISIÇÃO GET
+# ==========================================
+
+response = requests.get(
+    url,
+    headers=headers,
+    params=params
+)
+
+# ==========================================
+# TRANSFORMA JSON EM PYTHON
+# ==========================================
+
+dados = response.json()
+
+# ==========================================
+# CONVERTE PARA DATAFRAME
+# ==========================================
+
+if isinstance(dados, list):
+    df = pd.DataFrame(dados)
+
+elif isinstance(dados, dict):
+    df = pd.DataFrame([dados])
+
+# ==========================================
+# MOSTRA RESULTADO
+# ==========================================
+
+print(df.head())
