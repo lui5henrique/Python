@@ -1,0 +1,323 @@
+import requests
+import pandas as pd
+import time
+from datetime import datetime
+
+# =========================================================
+# CONFIGURAÇÕES
+# =========================================================
+
+TOKEN = "ff15c17bdcbffe1a535a835ffa63f813"
+
+URL = "https://api.portaldatransparencia.gov.br/api-de-dados/contratos"
+
+
+# =========================================================
+# HEADERS
+# =========================================================
+
+headers = {
+    "accept": "application/json",
+    "chave-api-dados": TOKEN,
+    "user-agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0 Safari/537.36"
+    )
+}
+
+# =========================================================
+# PARÂMETROS DA CONSULTA
+# =========================================================
+
+codigo_orgao = "63000"
+
+# importante usar períodos pequenos
+data_inicial = "01/01/2024"
+data_final = "31/04/2026"
+
+tamanho_pagina = 100
+
+# =========================================================
+# LISTA FINAL
+# =========================================================
+
+todos_dados = []
+
+pagina = 1
+
+print("Iniciando extração...")
+
+# =========================================================
+# LOOP DE PAGINAÇÃO
+# =========================================================
+
+while True:
+
+    params = {
+        "pagina": pagina,
+        "tamanhoPagina": tamanho_pagina,
+        "codigoOrgao": codigo_orgao,
+        "dataInicial": data_inicial,
+        "dataFinal": data_final
+    }
+
+    try:
+
+        response = requests.get(
+            URL,
+            headers=headers,
+            params=params,
+            timeout=60
+        )
+
+        print(f"\nPágina {pagina}")
+        print(f"Status: {response.status_code}")
+
+        # =================================================
+        # DETECTAR BLOQUEIO / CAPTCHA
+        # =================================================
+
+        texto = response.text.lower()
+
+        if "<html" in texto:
+            print("🔴 Bloqueio detectado (CAPTCHA / Cloudflare)")
+            break
+
+        # =================================================
+        # STATUS DIFERENTE DE 200
+        # =================================================
+
+        if response.status_code != 200:
+            print("Erro na requisição:")
+            print(response.text[:1000])
+            break
+
+        # =================================================
+        # CONVERTER JSON
+        # =================================================
+
+        try:
+            dados = response.json()
+        except Exception as erro_json:
+            print("Erro ao converter JSON:")
+            print(erro_json)
+            break
+
+        # =================================================
+        # FIM DOS DADOS
+        # =================================================
+
+        if not dados:
+            print("\nFim dos dados.")
+            break
+
+        # =================================================
+        # ADICIONAR DADOS
+        # =================================================
+
+        todos_dados.extend(dados)
+
+        print(f"Registros nesta página: {len(dados)}")
+        print(f"Total acumulado: {len(todos_dados)}")
+
+        pagina += 1
+
+        # =================================================
+        # PAUSA ANTI-BLOQUEIO
+        # =================================================
+
+        time.sleep(5)
+
+    except requests.exceptions.Timeout:
+        print("Timeout na requisição.")
+        break
+
+    except requests.exceptions.ConnectionError:
+        print("Erro de conexão.")
+        break
+
+    except Exception as erro:
+        print("Erro inesperado:")
+        print(erro)
+        break
+
+# =========================================================
+# CRIAR DATAFRAME
+# =========================================================
+
+print("\nCriando DataFrame...")
+
+api_contratos = pd.DataFrame(todos_dados)
+
+# =========================================================
+# MOSTRAR RESULTADOS
+# =========================================================
+
+print("\nQuantidade de linhas:")
+print(api_contratos.shape[0])
+
+print("\nQuantidade de colunas:")
+print(api_contratos.shape[1])
+
+print("\nColunas encontradas:")
+print(api_contratos.columns.tolist())
+
+print("\nPrévia:")
+display(api_contratos.head())
+
+'''
+# =========================================================
+# TRATAR COLUNAS DICIONÁRIO (SE EXISTIREM)
+# =========================================================
+
+# exemplo comum:
+# coluna orgaoSuperior pode vir como dicionário
+
+for coluna in api_contratos.columns:
+
+    if api_contratos[coluna].dtype == "object":
+
+        primeiro_valor = api_contratos[coluna].dropna()
+
+        if len(primeiro_valor) > 0:
+
+            primeiro_valor = primeiro_valor.iloc[0]
+
+            if isinstance(primeiro_valor, dict):
+
+                print(f"\nExpandindo coluna: {coluna}")
+
+                df_expandido = pd.json_normalize(api_contratos[coluna])
+
+                df_expandido.columns = [
+                    f"{coluna}_{subcol}"
+                    for subcol in df_expandido.columns
+                ]
+
+                api_contratos = pd.concat(
+                    [api_contratos, df_expandido],
+                    axis=1
+                )
+'''
+
+========================================================================================
+# TRATAMENTO DOS DADOS
+========================================================================================
+
+# drop colunas
+api_contratos = api_contratos.drop(columns = [
+                                'numeroProcesso',
+                                'fundamentoLegal',
+                                'compra',
+                                'situacaoContrato',
+                                'modalidadeCompra',
+                                'unidadeGestoraCompras'])
+
+
+# renommear colunas
+api_contratos.rename(columns = {
+                    'id': 'id_contrato',
+                    'numero': 'num_instrumento',
+                    'objeto': 'objeto_contrato',
+                    'unidadeGestora': 'ug_contrato',
+                    'dataAssinatura': 'dt_assinatura_contrato',
+                    'dataPublicacaoDOU': 'dt_publicacao_contrato',
+                    'dataInicioVigencia': 'dt_inicio_vigencia_contrato',
+                    'fornecedor': 'fornecedor_contrato',
+                    'dataFimVigencia': 'dt_fim_vigencia_contrato',
+                    'valorInicialCompra': 'R$_inicial_contrato',
+                    'valorFinalCompra': 'R$_final_contrato' 
+                     }, inplace = True)
+
+display(api_contratos.head(2))
+api_contratos.info()
+
+# mostrar a quantidade de registros extraidos
+print(f"Total de registros extraídos: {len(api_contratos)}")
+
+========================================================================================
+
+# remover espaços desncessários
+api_contratos.columns = api_contratos.columns.str.strip()
+
+api_contratos["ug_contrato"] = api_contratos["ug_contrato"].apply(
+    lambda x: x.get("codigo") if isinstance(x, dict) else None
+)
+
+#tranformar a coluna "ug_contrato" em integer
+api_contratos["ug_contrato"] = pd.to_numeric(api_contratos["ug_contrato"], errors="coerce").astype("Int64")
+
+# mostrar apenas os registros pela coluna "ug_contrato" que tenha o valor igual a 110096
+api_contratos = api_contratos[api_contratos["ug_contrato"] == 110096]
+display(api_contratos.head())
+
+# mudar a coluna "num_instrumento" para string
+api_contratos["num_instrumento"] = api_contratos["num_instrumento"].astype(str)
+# incluir "/" após os 8 primeiros caracteres da coluna "num_instrumento"
+api_contratos["num_instrumento"] = api_contratos["num_instrumento"].str[:5] + "/" + api_contratos["num_instrumento"].str[5:10]
+
+# excluir os 8 primeiros caracteres da coluna "num_instrumento"
+api_contratos["objeto_contrato"] = api_contratos["objeto_contrato"].str[8:]
+
+api_contratos["fornecedor_contrato"] = api_contratos["fornecedor_contrato"].apply(
+    lambda x: x.get("cnpjFormatado") if isinstance(x, dict) else None
+)
+
+# retirar pontos, traços e barras da coluna "fornecedor"
+api_contratos["fornecedor_contrato"] = api_contratos["fornecedor_contrato"].str.replace(r"[.\-\/]", "", regex=True)
+
+#tranformar colunas de data para datetime
+colunas_data = [
+    "dt_assinatura_contrato",
+    "dt_publicacao_contrato",
+    "dt_inicio_vigencia_contrato",
+    "dt_fim_vigencia_contrato"
+]
+
+for coluna in colunas_data:
+
+    api_contratos[coluna] = pd.to_datetime(
+        api_contratos[coluna],
+        errors="coerce"
+    )
+
+# preencher somente a data fim
+api_contratos["dt_fim_vigencia_contrato"] = (
+    api_contratos["dt_fim_vigencia_contrato"]
+    .fillna(pd.Timestamp("2026-12-31"))
+)
+
+api_contratos.info()
+# mostrar a quantidade de registros extraidos
+print(f"Total de registros extraídos: {len(api_contratos)}")
+
+========================================================================================================================================
+
+# caminho simples para salvar o CSV
+CAMINHO_SALVAR = r"C:\Users\luis.henrique\Desktop\api_gov\API_gpt\dados_extraidos_api_contratos.csv"
+
+try:
+
+    api_contratos.to_csv(
+        CAMINHO_SALVAR,
+        sep=";",
+        decimal=",",
+        encoding="utf-8-sig",
+        index=False
+    )
+
+    print("\nCSV salvo com sucesso:")
+    print(CAMINHO_SALVAR)
+
+
+except Exception as e:
+    print("Erro ao salvar o CSV:")
+    print(e)
+
+
+display(api_contratos.head(5))
+
+api_contratos.info()
+# mostrar a quantidade de registros extraidos
+print(f"Total de registros extraídos: {len(api_contratos)}")
